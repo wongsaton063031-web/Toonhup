@@ -1,0 +1,67 @@
+-- LocalScript ใส่ใน StarterPlayerScripts หรือ StarterCharacterScripts
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+local targetPart = nil -- กำหนด BasePart ของเป้าหมาย
+local isLocking = false
+local smoothValue = 50 -- ค่าความนุ่มนวล (1 ถึง 100)
+
+local function getAlpha(smooth)
+    -- แปลงค่า 1-100 ให้เป็นอัตราส่วนการ Lerp (ยิ่งค่าน้อย กล้องยิ่งค่อยๆ หมุนตาม)
+    local clamped = math.clamp(smooth, 1, 100)
+    return math.clamp(clamped / 100 * 0.2, 0.01, 1)
+end
+
+RunService.RenderStepped:Connect(function(deltaTime)
+    if isLocking and targetPart and Camera then
+        local currentCF = Camera.CFrame
+        local targetCF = CFrame.new(Camera.CFrame.Position, targetPart.Position)
+        
+        local alpha = getAlpha(smoothValue)
+        Camera.CFrame = currentCF:Lerp(targetCF, alpha)
+    end
+end)
+-- Script (Server Script) ใส่ไว้ใน ServerScriptService
+local Players = game:GetService("Players")
+
+local function createHealthUI(character)
+    local head = character:WaitForChild("Head", 5)
+    local humanoid = character:WaitForChild("Humanoid", 5)
+    if not head or not humanoid then return end
+
+    -- สร้าง BillboardGui
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "PlayerInfoUI"
+    billboard.Size = UDim2.new(0, 150, 0, 40)
+    billboard.StudsOffset = Vector3.new(0, 2.5, 0)
+    billboard.AlwaysOnTop = true
+    billboard.Parent = head
+
+    -- กรอบหลอดเลือด
+    local bgFrame = Instance.new("Frame")
+    bgFrame.Size = UDim2.new(1, 0, 0.4, 0)
+    bgFrame.Position = UDim2.new(0, 0, 0.6, 0)
+    bgFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    bgFrame.Parent = billboard
+
+    -- แถบเลือดปัจจุบัน
+    local healthBar = Instance.new("Frame")
+    healthBar.Size = UDim2.new(1, 0, 1, 0)
+    healthBar.BackgroundColor3 = Color3.fromRGB(0, 220, 100)
+    healthBar.Parent = bgFrame
+
+    -- อัปเดตขนาดแถบเลือดตามความเปลี่ยนแปลงของ Humanoid
+    local function updateHealth()
+        local healthPercent = math.clamp(humanoid.Health / humanoid.MaxHealth, 0, 1)
+        healthBar.Size = UDim2.new(healthPercent, 0, 1, 0)
+    end
+
+    humanoid.HealthChanged:Connect(updateHealth)
+    updateHealth()
+end
+
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(createHealthUI)
+end)
